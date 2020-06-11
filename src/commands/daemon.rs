@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::time::{Duration, SystemTime};
 
 use anyhow::Result;
@@ -15,10 +16,12 @@ pub struct Args {
     retry: Duration,
 
     #[options(free, required, help = "command used to process jobs")]
-    command: super::exec::Command,
+    command: Vec<String>,
 }
 
 pub fn exec(queue: Queue, args: Args) -> Result<()> {
+    let command = super::exec::Command::try_from(args.command)?;
+
     let mut next_scan = SystemTime::now() + args.scan;
 
     loop {
@@ -36,7 +39,7 @@ pub fn exec(queue: Queue, args: Args) -> Result<()> {
 
             trace!("Scanning for new jobs");
             while let Some(job) = queue.poll()? {
-                run(job, &args.command)?;
+                run(job, &command)?;
             }
 
             next_scan += args.scan;

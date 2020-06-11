@@ -55,9 +55,9 @@ pub mod exec {
     use std::ffi::OsStr;
     use std::path::Path;
     use std::process;
-    use std::str::FromStr;
 
     use anyhow::{Error, format_err, Result};
+    use std::convert::TryFrom;
 
     #[derive(Debug)]
     pub struct Command {
@@ -83,22 +83,25 @@ pub mod exec {
         }
     }
 
-    impl FromStr for Command {
-        type Err = Error;
+    impl TryFrom<Vec<String>> for Command {
+        type Error = Error;
 
-        fn from_str(s: &str) -> Result<Self> {
-            // Parse the command string using shell splitting
-            let command = shlex::split(s)
-                .ok_or_else(|| format_err!("Can not parse command"))?;
-
+        fn try_from(command: Vec<String>) -> Result<Self, Self::Error> {
             // Separate program (first value) from arguments (remaining values)
             let (program, arguments) = command.split_first()
                 .ok_or_else(|| format_err!("Empty command"))?;
 
-            return Ok(Self {
-                program: program.to_string(),
-                arguments: arguments.to_vec(),
-            });
+            // If there are no arguments given, try to split the program
+            let (program, arguments) = if arguments.is_empty() {
+                let command = shlex::split(program).ok_or_else(|| format_err!("Can not parse command"))?;
+                let (program, arguments) = command.split_first()
+                    .ok_or_else(|| format_err!("Empty command"))?;
+                (program.to_string(), arguments.to_vec())
+            } else {
+                (program.to_string(), arguments.to_vec())
+            };
+
+            return Ok(Self { program, arguments });
         }
     }
 

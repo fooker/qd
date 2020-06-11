@@ -1,6 +1,3 @@
-#![feature(never_type)]
-#![feature(iterator_fold_self)]
-
 use anyhow::Result;
 use gumdrop::Options;
 use gumdrop::ParsingStyle::StopAtFirstFree;

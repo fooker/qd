@@ -1,0 +1,19 @@
+[package]
+name = "qd"
+version = "0.1.0"
+description = "A simple job queue backed by the filesystem"
+authors = ["Dustin Frisch <fooker@lab.sh>"]
+
+edition = "2018"
+
+[dependencies]
+gumdrop = "0.8"
+humantime = "2.0.0"
+anyhow = "1"
+tempfile = "3"
+uuid = { version = "0.8", features = ["v4"] }
+base58 = "0.1"
+log = "0.4"
+stderrlog = "0.4"
+shlex = "0.1"
+libc = "0.2"

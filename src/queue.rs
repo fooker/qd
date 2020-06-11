@@ -200,16 +200,6 @@ impl<'q, S: State> Job<'q, S> {
         });
     }
 
-    pub fn complete(self) -> Result<()> {
-        fs::remove_dir_all(&self.path())?;
-        return Ok(());
-    }
-
-    pub fn error(self) -> Result<()> {
-        fs::rename(self.path(), &self.queue.path_err.join(self.id.as_string()))?;
-        return Ok(());
-    }
-
     pub fn path(&self) -> PathBuf {
         return S::path(self.queue).join(self.id.as_string());
     }
@@ -220,6 +210,18 @@ impl<'q, S: State> Job<'q, S> {
 
     pub fn since(&self) -> &SystemTime {
         return &self.since;
+    }
+}
+
+impl <'q> Job<'q, NewState> {
+    pub fn complete(self) -> Result<()> {
+        fs::remove_dir_all(&self.path())?;
+        return Ok(());
+    }
+
+    pub fn error(self) -> Result<()> {
+        fs::rename(self.path(), &self.queue.path_err.join(self.id.as_string()))?;
+        return Ok(());
     }
 }
 

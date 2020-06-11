@@ -206,7 +206,7 @@ impl<'q, S: State> Job<'q, S> {
     }
 
     pub fn error(self) -> Result<()> {
-        fs::rename(self.path(), &self.queue.path_err)?;
+        fs::rename(self.path(), &self.queue.path_err.join(self.id.as_string()))?;
         return Ok(());
     }
 
@@ -225,7 +225,7 @@ impl<'q, S: State> Job<'q, S> {
 
 impl <'q> Job<'q, ErrState> {
     pub fn retry(self) -> Result<()> {
-        fs::rename(self.path(), &self.queue.path_new)?;
+        fs::rename(self.path(), &self.queue.path_new.join(self.id.as_string()))?;
         return Ok(());
     }
 }

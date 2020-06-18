@@ -1,14 +1,15 @@
 use std::fmt;
 use std::fs;
+use std::fs::DirEntry;
+use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::time::SystemTime;
 
 use anyhow::{Error, format_err, Result};
 use base58::{FromBase58, ToBase58};
+use log::debug;
 use uuid::Uuid;
-use std::time::SystemTime;
-use std::marker::PhantomData;
-use std::fs::DirEntry;
 
 #[derive(Debug, Clone)]
 pub struct ID(Uuid);
@@ -108,6 +109,7 @@ impl Queue {
         let id = ID::random();
         let path = self.path_tmp.join(id.as_string());
 
+        debug!("Creating {:?}", path);
         fs::create_dir(&path)?;
 
         return Ok(Stage {
@@ -149,10 +151,13 @@ impl<'q> Stage<'q> {
     }
 
     pub fn persist(mut self) -> Result<()> {
-        return Ok(fs::rename(
-            self.path.take().expect("no path"),
-            self.queue.path_new.join(self.id.to_string())
-        )?);
+        let path = self.path.take().expect("no path");
+        let target = self.queue.path_new.join(self.id.to_string());
+
+        debug!("Moving {:?} -> {:?}", path, target);
+        fs::rename(path,target)?;
+
+        return Ok(());
     }
 
     pub fn dismiss(mut self) -> Result<()> {
@@ -163,6 +168,7 @@ impl<'q> Stage<'q> {
         // FIXME: Use something like named tmpfile for this?
 
         if let Some(path) = self.path.take() {
+            debug!("Deleting {:?}", path);
             fs::remove_dir_all(path)?;
         }
 
@@ -215,19 +221,29 @@ impl<'q, S: State> Job<'q, S> {
 
 impl <'q> Job<'q, NewState> {
     pub fn complete(self) -> Result<()> {
+        debug!("Deleting {:?}", self.path());
         fs::remove_dir_all(&self.path())?;
+
         return Ok(());
     }
 
     pub fn error(self) -> Result<()> {
-        fs::rename(self.path(), &self.queue.path_err.join(self.id.as_string()))?;
+        let target = self.queue.path_err.join(self.id.as_string());
+
+        debug!("Moving {:?} -> {:?}", self.path(), target);
+        fs::rename(self.path(), &target)?;
+
         return Ok(());
     }
 }
 
 impl <'q> Job<'q, ErrState> {
     pub fn retry(self) -> Result<()> {
-        fs::rename(self.path(), &self.queue.path_new.join(self.id.as_string()))?;
+        let target = self.queue.path_new.join(self.id.as_string());
+
+        debug!("Moving {:?} -> {:?}", self.path(), target);
+        fs::rename(self.path(), &target)?;
+
         return Ok(());
     }
 }

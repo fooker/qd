@@ -28,7 +28,7 @@ pub fn exec(queue: Queue, args: Args) -> Result<()> {
         let now = SystemTime::now();
         trace!("Looping: now={:?}, next_scan={:?}", now, next_scan);
 
-        if now < next_scan {
+        if now > next_scan {
             trace!("Requeue jobs for retry");
             for failed in queue.failed()? {
                 if *failed.since() + args.retry < now {

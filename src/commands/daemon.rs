@@ -22,7 +22,7 @@ pub struct Args {
 pub fn exec(queue: Queue, args: Args) -> Result<()> {
     let command = super::exec::Command::try_from(args.command)?;
 
-    let mut next_scan = SystemTime::now() + args.scan;
+    let mut next_scan = SystemTime::now();
 
     loop {
         let now = SystemTime::now();

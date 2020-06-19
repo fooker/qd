@@ -32,7 +32,7 @@ pub fn exec(queue: Queue, args: Args) -> Result<()> {
             trace!("Requeue jobs for retry");
             for failed in queue.failed()? {
                 if *failed.since() + args.retry < now {
-                    info!("Retrying job {}", failed.id());
+                    info!("Retrying job {} (failed since {:?})", failed.id(), failed.since());
                     failed.retry()?;
                 }
             }

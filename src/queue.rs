@@ -1,6 +1,6 @@
 use std::fmt;
 use std::fs;
-use std::fs::DirEntry;
+use std::fs::{DirEntry, OpenOptions};
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -217,6 +217,19 @@ impl<'q, S: State> Job<'q, S> {
     pub fn since(&self) -> &SystemTime {
         return &self.since;
     }
+
+    fn transfer<T: State>(self) -> Result<Job<'q, T>> {
+        let target = T::path(self.queue).join(self.id.as_string());
+
+        debug!("Moving {:?} -> {:?}", self.path(), &target);
+        fs::rename(self.path(), &target)?;
+
+        // Touching the target directory to update modification timestamp
+        drop(OpenOptions::new().create(true).write(true).open(&target)?);
+
+        // SAFETY: Transmuting here is ok, as the only difference in type is the phantom data
+        return Ok(unsafe { std::mem::transmute(self) });
+    }
 }
 
 impl <'q> Job<'q, NewState> {
@@ -227,23 +240,13 @@ impl <'q> Job<'q, NewState> {
         return Ok(());
     }
 
-    pub fn error(self) -> Result<()> {
-        let target = self.queue.path_err.join(self.id.as_string());
-
-        debug!("Moving {:?} -> {:?}", self.path(), target);
-        fs::rename(self.path(), &target)?;
-
-        return Ok(());
+    pub fn error(self) -> Result<Job<'q, ErrState>> {
+        return self.transfer();
     }
 }
 
 impl <'q> Job<'q, ErrState> {
-    pub fn retry(self) -> Result<()> {
-        let target = self.queue.path_new.join(self.id.as_string());
-
-        debug!("Moving {:?} -> {:?}", self.path(), target);
-        fs::rename(self.path(), &target)?;
-
-        return Ok(());
+    pub fn retry(self) -> Result<Job<'q, NewState>> {
+        return self.transfer();
     }
 }

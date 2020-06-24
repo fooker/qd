@@ -1,15 +1,17 @@
 use std::fmt;
 use std::fs;
-use std::fs::{DirEntry, OpenOptions};
+use std::fs::DirEntry;
 use std::marker::PhantomData;
+use std::os::linux::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::time::SystemTime;
+use std::time::{SystemTime, UNIX_EPOCH, Duration};
 
 use anyhow::{Error, format_err, Result};
 use base58::{FromBase58, ToBase58};
 use log::debug;
 use uuid::Uuid;
+use std::ops::Add;
 
 #[derive(Debug, Clone)]
 pub struct ID(Uuid);
@@ -198,10 +200,13 @@ impl<'q, S: State> Job<'q, S> {
     fn from_entry(queue: &'q Queue, entry: DirEntry) -> Result<Self> {
         let id = ID::from_str(entry.file_name().to_string_lossy().as_ref())?;
 
+
+        let ctime = entry.metadata()?.st_ctime();
+
         return Ok(Job {
             queue,
             id,
-            since: entry.metadata()?.modified()?,
+            since: UNIX_EPOCH.add(Duration::from_secs(ctime as u64)),
             _state: PhantomData,
         });
     }
@@ -224,8 +229,8 @@ impl<'q, S: State> Job<'q, S> {
         debug!("Moving {:?} -> {:?}", self.path(), &target);
         fs::rename(self.path(), &target)?;
 
-        // Touching the target directory to update modification timestamp
-        drop(OpenOptions::new().create(true).write(true).open(&target)?);
+        // // Touching the target directory to update modification timestamp
+        // drop(OpenOptions::new().create(true).write(true).open(&target)?);
 
         // SAFETY: Transmuting here is ok, as the only difference in type is the phantom data
         return Ok(unsafe { std::mem::transmute(self) });
